@@ -2,6 +2,7 @@ from typing import TypedDict
 from pydantic import BaseModel, Field
 
 
+# 1 день поездки
 class DayPlan(TypedDict):
     # порядковый номер дня поездки - 1, 2
     day_number: int
@@ -11,6 +12,7 @@ class DayPlan(TypedDict):
     activities: list[str]
 
 
+# Вся поездка
 class TripState(TypedDict):
     # место, куда поедем
     destination: str
@@ -35,3 +37,9 @@ class GeneratePlanOutput(BaseModel):
     days: list[DayTheme] = Field(
         description="Список тем, по одной на каждый день поездки"
     )
+
+
+class ListActivities(BaseModel):
+    """Список активностей по дням"""
+
+    actions: list[str]

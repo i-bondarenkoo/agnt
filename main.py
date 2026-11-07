@@ -1,7 +1,7 @@
 from langchain_gigachat import GigaChat
-from langchain.agents import create_agent
+from langgraph.graph import END, StateGraph, START
 from config import settings
-from schemas import GeneratePlanOutput, TripState
+from schemas import GeneratePlanOutput, TripState, ListActivities
 
 llm_model = GigaChat(
     model="GigaChat-2",
@@ -9,26 +9,7 @@ llm_model = GigaChat(
     credentials=settings.gigachat_credentials,
 )
 
-# Супер, фиксируем проект: агент-органайзер поездки. Вот весь путь по шагам (чтобы видеть, куда идём):
 
-# State — что за данные "живут" в процессе.
-# Узел generate_plan — одним вызовом модели придумывает список дней
-# (без деталей, просто темы: "день 1 — приезд и центр города", "день 2 — музеи" и т.д.).
-# Узел fill_day — берёт один конкретный день и просит модель наполнить его активностями.
-# Условие — проверить, остались ли ещё дни без наполнения: если да → вернуться на fill_day для следующего дня,
-# если нет → закончить.
-# Собрать граф из этих узлов и условия.
-# Запустить и посмотреть результат.
-# # Шаг 1: State
-
-# State — это данные, которые видит каждый узел и может изменить. Для нашей задачи нужно хранить:
-
-
-# тему/город поездки (вход от пользователя, не меняется по ходу),
-# список дней с их темой (результат узла 2),
-# список дней уже с активностями — то, что мы постепенно наполняем (растёт по одному элементу за вызов fill_day),
-# индекс, какой день по счёту сейчас обрабатываем (чтобы узел fill_day знал, кого брать следующим, и чтобы условие знало,
-# когда остановиться).
 def generate_plan(state: TripState):
     """
     Функция генерирует план по поездке, место и количество дней вводит пользователь.
@@ -36,7 +17,7 @@ def generate_plan(state: TripState):
     prompt = f"Пользователь едет в {state['destination']} на {state['nums_day']}. Придумай тему для каждого дня поездки"
     model_with_structure = llm_model.with_structured_output(GeneratePlanOutput)
     result = model_with_structure.invoke(prompt)
-    print(result)
+    # print(result)
     days_plan = [
         {"day_number": day.day_number, "theme": day.theme, "activities": []}
         for day in result.days
@@ -44,11 +25,55 @@ def generate_plan(state: TripState):
     return {"days_plan": days_plan}
 
 
-state = {
-    "destination": "Казань",
-    "nums_day": 3,
-    "days_plan": [],
-    "current_day_index": 0,
-}
+def fill_day(state: TripState):
+    """Заполняет 1 день активностями - тот, на который указывает current_day_index"""
+    index = state["current_day_index"]
+    day = state["days_plan"][index]
+
+    prompt = f"Для конкретной темы {day['theme']} составь план активностей"
+    model_wtih_structute = llm_model.with_structured_output(ListActivities)
+    result = model_wtih_structute.invoke(prompt)
+
+    update_day = {**day, "activities": result.actions}
+    new_days_plan = state["days_plan"].copy()
+    new_days_plan[index] = update_day
+    return {"days_plan": new_days_plan, "current_day_index": index + 1}
+
+
+def end_or_continue(state: TripState):
+    if state["current_day_index"] < len(state["days_plan"]):
+        return "fill_day"
+    return END
+
+
+# state = {
+#     "days_plan": [
+#         {"day_number": 1, "theme": "музеи и история", "activities": []},
+#         {"day_number": 2, "theme": "кулинария и традиции", "activities": []},
+#         {
+#             "day_number": 3,
+#             "theme": "современная Казань и развлечения",
+#             "activities": [],
+#         },
+#     ],
+#     "current_day_index": 0,
+# }
+graph = (
+    StateGraph(TripState)
+    .add_node("generate_plan", generate_plan)
+    .add_node("fill_day", fill_day)
+    .add_edge(START, "generate_plan")
+    .add_edge("generate_plan", "fill_day")
+    .add_conditional_edges("fill_day", end_or_continue)
+    .compile()
+)
 if __name__ == "__main__":
-    print(generate_plan(state=state))
+    result = graph.invoke(
+        {
+            "destination": "Красноярск",
+            "days_plan": [],
+            "current_day_index": 0,
+            "nums_day": 4,
+        }
+    )
+    print(result)
