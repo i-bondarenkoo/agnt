@@ -49,7 +49,7 @@ def route_by_type(state: StateAll):
     if state["type_message"] == TypeMessage.complaint:
         return "response_for_complaint"
     if state["type_message"] == TypeMessage.question:
-        return "response_for_questions"
+        return "response_for_question"
     return "response_for_gratitude"
 
 
@@ -68,8 +68,6 @@ graph = (
 )
 if __name__ == "__main__":
     result = graph.invoke(
-        {
-            "user_message": "Спасибо большое, ты мне помог разобраться с этой crud функцией алхимии"
-        }
+        {"user_message": "Привет, меня зовут маша. Давай поиграем в города?"}
     )
     print(result)
