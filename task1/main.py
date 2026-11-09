@@ -1,7 +1,7 @@
 from langchain_gigachat import GigaChat
 from langgraph.graph import END, StateGraph, START
 from config import settings
-from schemas import GeneratePlanOutput, TripState, ListActivities
+from task1.schemas import GeneratePlanOutput, TripState, ListActivities
 
 llm_model = GigaChat(
     model="GigaChat-2",
