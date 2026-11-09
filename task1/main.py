@@ -1,13 +1,8 @@
 from langchain_gigachat import GigaChat
 from langgraph.graph import END, StateGraph, START
-from config import settings
-from task1.schemas import GeneratePlanOutput, TripState, ListActivities
 
-llm_model = GigaChat(
-    model="GigaChat-2",
-    verify_ssl_certs=False,
-    credentials=settings.gigachat_credentials,
-)
+from task1.schemas import GeneratePlanOutput, TripState, ListActivities
+from llm_model import llm_model
 
 
 def generate_plan(state: TripState):
