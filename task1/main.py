@@ -1,4 +1,3 @@
-from langchain_gigachat import GigaChat
 from langgraph.graph import END, StateGraph, START
 
 from task1.schemas import GeneratePlanOutput, TripState, ListActivities
